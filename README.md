@@ -190,3 +190,75 @@ Artık LLM'lerle çalışmak için taze bir ortamınız var.
 Her zaman `langchain-env` ortamını kullandığınızı kontrol etmeyi unutmayın. Özellikle VS Code kullanırken, bu yeni ortamı seçtiğinizden emin olun.
 
 Bu projeyi commit etmeyi ve push yapmayı unutmayın.
+
+---
+
+## 📝 Benim kurulumum (WSL Ubuntu, 2026-10-20)
+
+Yukarıdaki talimatlar kurulum gününde `gcloud`'un zaten kurulu olduğunu varsayıyor. Bende değildi; aşağıdaki adımlar sıfırdan çalışan hali.
+
+### Klasör yapısı
+
+```
+~/code/sprint-19/03-LangChain/        ← ünite klasörü
+├── .python-version                   ← "langchain-env" (pyenv local ile oluştu)
+├── .env                              ← Vertex AI ayarları (repoya GİRMEZ)
+└── S19D3-S-data-langchain-env/       ← bu repo
+```
+
+`03-LangChain` altındaki her klasör otomatik olarak `langchain-env` kullanır; dışında `workintech` aktif kalır. İki ortam aynı anda, farklı klasörlerde çalışır.
+
+### 1. Sanal ortam
+
+```bash
+cd ~/code/sprint-19/03-LangChain
+pyenv virtualenv 3.12.9 langchain-env
+pyenv local langchain-env              # terminalde [langchain-env] görünmeli
+pip install --upgrade pip
+cd S19D3-S-data-langchain-env && pip install -r requirements.txt
+```
+
+Neden ayrı ortam: `requirements.txt` protobuf 6.33 istiyor; `workintech`'teki TensorFlow 2.16 protobuf 4.25 ile çalışıyor. Aynı ortama kurulsa TF bozulurdu.
+
+### 2. gcloud CLI (Google'ın resmi apt deposu)
+
+```bash
+sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+sudo apt-get update && sudo apt-get install -y google-cloud-cli
+```
+
+### 3. Kimlik doğrulama (iki ayrı giriş)
+
+```bash
+gcloud auth login                         # gcloud komutları için
+gcloud auth application-default login     # Python kodu (google-genai) için → ~/.config/gcloud/application_default_credentials.json
+```
+
+### 4. Proje + Vertex AI
+
+```bash
+gcloud config set project course16-500013
+gcloud auth application-default set-quota-project course16-500013
+gcloud services enable aiplatform.googleapis.com
+```
+
+`course16-500013` seçildi: faturalandırması bağlı 3 projeden kursa ait olanı (diğerleri kişisel `f1-analytics` ve otomatik isimli bir proje).
+
+### 5. `.env`
+
+```bash
+cp .env.vertex.sample ../.env
+sed -i 's/your-project-id/course16-500013/' ../.env
+```
+
+### 6. VS Code kernel
+
+Notebook'ta kernel'ı **`langchain-env`** seç (görünmezse `Ctrl+Shift+P` → *Developer: Reload Window*). Emin olmak için:
+
+```python
+import sys; print(sys.executable)   # .../envs/langchain-env/bin/python olmalı
+```
+
+`ImportError: cannot import name 'genai' from 'google'` hatası → kernel hâlâ `workintech`.
